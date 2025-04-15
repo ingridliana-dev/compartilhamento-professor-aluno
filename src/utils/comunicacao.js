@@ -21,13 +21,23 @@ const isModernBrowser = !!(
   navigator.userAgent.includes("Safari")
 );
 
-// Usar WebRTC se o navegador for moderno, mesmo que a detecção falhe
-const useWebRTC = hasWebRTCSupport || isModernBrowser;
+// Verificar se estamos em produção (Railway)
+const isProduction =
+  window.location.hostname.includes("railway.app") ||
+  window.location.hostname.includes(".up.railway.app");
+
+// Forçar o uso de Socket.IO Stream em produção para maior confiabilidade
+const forceSocketStream = isProduction;
+
+// Usar WebRTC apenas se o navegador for moderno E não estivermos forçando Socket.IO Stream
+const useWebRTC = (hasWebRTCSupport || isModernBrowser) && !forceSocketStream;
 
 // Escolher a implementação apropriada
 const Peer = useWebRTC ? createPeer : createSocketStreamPeer;
 console.log("Suporte a WebRTC detectado:", hasWebRTCSupport);
 console.log("Navegador moderno detectado:", isModernBrowser);
+console.log("Em ambiente de produção:", isProduction);
+console.log("Forçando Socket.IO Stream:", forceSocketStream);
 console.log(
   "Usando implementação:",
   useWebRTC ? "WebRTC personalizado" : "Socket.IO Stream"
@@ -40,9 +50,6 @@ console.log(
 
 // Em produção (Railway), o servidor Socket.IO está no mesmo host/porta que o frontend
 // Em desenvolvimento, o servidor Socket.IO está na porta 3001
-const isProduction =
-  window.location.hostname.includes("railway.app") ||
-  window.location.hostname.includes(".up.railway.app");
 
 let SERVER_URL;
 if (isProduction) {

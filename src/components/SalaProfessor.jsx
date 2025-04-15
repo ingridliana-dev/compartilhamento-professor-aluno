@@ -73,14 +73,8 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
               console.log(
                 `Aluno compartilhando tela: ${aluno.nome} (${aluno.id})`
               );
-              // Selecionar automaticamente o aluno que está compartilhando a tela
-              if (!alunoSelecionado || alunoSelecionado.id !== aluno.id) {
-                // Adicionar notificação visual
-                alert(
-                  `O aluno ${aluno.nome} iniciou o compartilhamento de tela. Selecionando automaticamente.`
-                );
-                selecionarAluno(aluno.id);
-              }
+              // Apenas registrar que o aluno está compartilhando tela, sem selecionar automaticamente
+              // e sem mostrar alerta
             }
 
             // Se o aluno desconectado for o selecionado, limpar a seleção
