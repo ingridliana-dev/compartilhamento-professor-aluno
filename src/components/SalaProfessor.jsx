@@ -62,11 +62,26 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
               setAlunosConectados((prev) =>
                 prev.filter((a) => a.id !== aluno.id)
               );
-
-              // Se o aluno desconectado for o selecionado, limpar a seleção
-              if (alunoSelecionado?.id === aluno.id) {
-                setAlunoSelecionado(null);
+            } else if (evento === "compartilhando") {
+              console.log(
+                `Aluno compartilhando tela: ${aluno.nome} (${aluno.id})`
+              );
+              // Selecionar automaticamente o aluno que está compartilhando a tela
+              if (!alunoSelecionado || alunoSelecionado.id !== aluno.id) {
+                // Adicionar notificação visual
+                alert(
+                  `O aluno ${aluno.nome} iniciou o compartilhamento de tela. Selecionando automaticamente.`
+                );
+                selecionarAluno(aluno.id);
               }
+            }
+
+            // Se o aluno desconectado for o selecionado, limpar a seleção
+            if (
+              evento === "desconectado" &&
+              alunoSelecionado?.id === aluno.id
+            ) {
+              setAlunoSelecionado(null);
             }
           }
         );

@@ -213,6 +213,17 @@ io.on("connection", (socket) => {
         console.log(
           `Aluno ${aluno.nome} enviando sinal para o professor ${salas[salaId].professor.nome}`
         );
+
+        // Se for uma oferta (início do compartilhamento), notificar o professor
+        if (sinal.type === "offer") {
+          console.log(
+            `Notificando professor que o aluno ${aluno.nome} iniciou compartilhamento`
+          );
+          io.to(destinatarioId).emit("aluno-compartilhando", {
+            alunoId: aluno.id,
+            alunoNome: aluno.nome,
+          });
+        }
       }
       // Verificar se o remetente é o professor
       else if (

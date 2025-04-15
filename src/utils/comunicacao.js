@@ -316,10 +316,17 @@ export const configurarReceptorAlunos = (callback) => {
     callback("desconectado", aluno);
   });
 
+  // Adicionar receptor para notificação de aluno compartilhando tela
+  socket.on("aluno-compartilhando", (aluno) => {
+    console.log(`Aluno ${aluno.alunoNome} iniciou compartilhamento de tela`);
+    callback("compartilhando", { id: aluno.alunoId, nome: aluno.alunoNome });
+  });
+
   // Retorna função para remover os listeners
   return () => {
     socket.off("aluno-conectado");
     socket.off("aluno-desconectado");
+    socket.off("aluno-compartilhando");
   };
 };
 
