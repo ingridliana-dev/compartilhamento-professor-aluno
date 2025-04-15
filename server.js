@@ -33,16 +33,42 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
+// Configurar CORS para permitir acesso de qualquer origem
 app.use(
   cors({
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: true, // Permitir qualquer origem
+    methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    ],
   })
 );
 
+// Adicionar middleware para lidar com preflight requests
+app.options("*", cors());
+
 // Servir arquivos estáticos em produção
 app.use(express.static(join(__dirname, "dist")));
+
+// Rota de healthcheck para o Railway
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Rota para verificar informações do servidor
+app.get("/api/info", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    environment: isProduction ? "production" : "development",
+    protocol: req.protocol,
+    host: req.get("host"),
+    timestamp: new Date().toISOString(),
+    salas: Object.keys(salas).length,
+  });
+});
 
 // Criar servidor HTTP ou HTTPS dependendo do ambiente
 if (isProduction) {
@@ -58,13 +84,25 @@ if (isProduction) {
 
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: true, // Permitir qualquer origem
+    methods: ["GET", "POST", "OPTIONS"],
     credentials: true,
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Access-Control-Allow-Origin",
+    ],
   },
   // Configurar opções para HTTPS apenas se não estivermos em produção
   secure: !isProduction && options.key && options.cert,
   transports: ["websocket", "polling"],
+  // Aumentar timeout para conexões lentas
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  // Permitir upgrades de conexão
+  allowUpgrades: true,
+  // Configurar para funcionar com proxies
+  allowEIO3: true,
 });
 
 // Armazenar informações das salas

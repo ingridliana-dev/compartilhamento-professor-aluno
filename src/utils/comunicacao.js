@@ -8,15 +8,29 @@ const hasWebRTCSupport = !!(
   typeof window !== "undefined" &&
   window.RTCPeerConnection &&
   window.RTCSessionDescription &&
-  window.RTCIceCandidate
+  window.RTCIceCandidate &&
+  navigator.mediaDevices &&
+  navigator.mediaDevices.getUserMedia
 );
 
+// Forçar uso de WebRTC em navegadores modernos
+const isModernBrowser = !!(
+  navigator.userAgent.includes("Chrome") ||
+  navigator.userAgent.includes("Firefox") ||
+  navigator.userAgent.includes("Edge") ||
+  navigator.userAgent.includes("Safari")
+);
+
+// Usar WebRTC se o navegador for moderno, mesmo que a detecção falhe
+const useWebRTC = hasWebRTCSupport || isModernBrowser;
+
 // Escolher a implementação apropriada
-const Peer = hasWebRTCSupport ? createPeer : createSocketStreamPeer;
+const Peer = useWebRTC ? createPeer : createSocketStreamPeer;
 console.log("Suporte a WebRTC detectado:", hasWebRTCSupport);
+console.log("Navegador moderno detectado:", isModernBrowser);
 console.log(
   "Usando implementação:",
-  hasWebRTCSupport ? "WebRTC personalizado" : "Socket.IO Stream"
+  useWebRTC ? "WebRTC personalizado" : "Socket.IO Stream"
 );
 
 // URL do servidor Socket.IO - usar o IP da máquina para acesso externo
@@ -223,7 +237,7 @@ export const inicializarPeer = (
     console.log("Criando peer com configuração:", peerConfig);
 
     // Se estamos usando Socket.IO Stream, precisamos adicionar o socket e o salaId
-    if (!hasWebRTCSupport) {
+    if (!useWebRTC) {
       console.log("Usando implementação baseada em Socket.IO");
       peerConfig.socket = socket;
       peerConfig.salaId = salaId;
