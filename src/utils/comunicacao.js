@@ -23,7 +23,21 @@ console.log(
 // Para desenvolvimento local, use localhost
 // Para acesso de outros dispositivos na mesma rede, use o IP da máquina
 // Usar o mesmo protocolo que o navegador está usando (HTTP ou HTTPS)
-const SERVER_URL = `${window.location.protocol}//${window.location.hostname}:3001`;
+
+// Em produção (Railway), o servidor Socket.IO está no mesmo host/porta que o frontend
+// Em desenvolvimento, o servidor Socket.IO está na porta 3001
+const isProduction =
+  window.location.hostname.includes("railway.app") ||
+  window.location.hostname.includes(".up.railway.app");
+
+let SERVER_URL;
+if (isProduction) {
+  // Em produção, o servidor Socket.IO está no mesmo host/porta
+  SERVER_URL = `${window.location.protocol}//${window.location.host}`;
+} else {
+  // Em desenvolvimento, o servidor Socket.IO está na porta 3001
+  SERVER_URL = `${window.location.protocol}//${window.location.hostname}:3001`;
+}
 
 // Instância do Socket.IO
 let socket = null;

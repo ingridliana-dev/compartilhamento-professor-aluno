@@ -1,16 +1,33 @@
 import express from "express";
-import { createServer } from "https";
+import { createServer as createHttpServer } from "http";
+import { createServer as createHttpsServer } from "https";
 import { Server } from "socket.io";
 import cors from "cors";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import fs from "fs";
 
-// Certificados para HTTPS
-const options = {
-  key: fs.readFileSync("./.cert/key.pem"),
-  cert: fs.readFileSync("./.cert/cert.pem"),
-};
+// Determinar se estamos em produção (Railway) ou desenvolvimento
+const isProduction =
+  process.env.NODE_ENV === "production" ||
+  process.env.RAILWAY_ENVIRONMENT === "production";
+
+// Certificados para HTTPS em desenvolvimento
+let options = {};
+let server;
+
+if (!isProduction) {
+  try {
+    options = {
+      key: fs.readFileSync("./.cert/key.pem"),
+      cert: fs.readFileSync("./.cert/cert.pem"),
+    };
+  } catch (error) {
+    console.warn(
+      "Certificados SSL não encontrados. Usando HTTP para desenvolvimento."
+    );
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -27,15 +44,26 @@ app.use(
 // Servir arquivos estáticos em produção
 app.use(express.static(join(__dirname, "dist")));
 
-const server = createServer(options, app);
+// Criar servidor HTTP ou HTTPS dependendo do ambiente
+if (isProduction) {
+  server = createHttpServer(app);
+} else {
+  // Em desenvolvimento, usar HTTPS se os certificados estiverem disponíveis
+  if (options.key && options.cert) {
+    server = createHttpsServer(options, app);
+  } else {
+    server = createHttpServer(app);
+  }
+}
+
 const io = new Server(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
-  // Configurar opções para HTTPS
-  secure: true,
+  // Configurar opções para HTTPS apenas se não estivermos em produção
+  secure: !isProduction && options.key && options.cert,
   transports: ["websocket", "polling"],
 });
 
@@ -231,6 +259,10 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`Ambiente: ${isProduction ? "Produção" : "Desenvolvimento"}`);
+  console.log(
+    `Usando ${server instanceof createHttpsServer ? "HTTPS" : "HTTP"}`
+  );
 });
