@@ -236,150 +236,48 @@ export const inicializarPeer = (
   try {
     console.log("Criando peer com configuração:", peerConfig);
 
-    // Se estamos usando Socket.IO Stream, precisamos adicionar o socket e o salaId
-    if (!useWebRTC) {
-      console.log("Usando implementação baseada em Socket.IO");
+    // Verificar se RTCPeerConnection está realmente disponível
+    const rtcAvailable =
+      typeof window !== "undefined" &&
+      typeof window.RTCPeerConnection === "function" &&
+      typeof window.RTCSessionDescription === "function" &&
+      typeof window.RTCIceCandidate === "function";
+
+    console.log("RTCPeerConnection realmente disponível:", rtcAvailable);
+
+    // Usar Socket.IO Stream se RTCPeerConnection não estiver disponível
+    if (!rtcAvailable) {
+      console.log(
+        "RTCPeerConnection não disponível, usando implementação baseada em Socket.IO"
+      );
       peerConfig.socket = socket;
       peerConfig.salaId = salaId;
       peerConfig.destinatarioId = null; // Será definido automaticamente para o professor
+
+      // Usar diretamente a implementação Socket.IO Stream
+      const peer = createSocketStreamPeer(peerConfig);
+      console.log("Peer Socket.IO Stream criado com sucesso");
+      return peer;
     }
 
-    // Criar o peer com a implementação apropriada
+    // Tentar usar a implementação WebRTC
     try {
-      console.log("Criando peer com a implementação selecionada");
-      const peer = Peer(peerConfig);
-      console.log("Peer criado com sucesso");
+      console.log("Criando peer com a implementação WebRTC");
+      const peer = createPeer(peerConfig);
+      console.log("Peer WebRTC criado com sucesso");
       return peer;
     } catch (peerError) {
-      console.error("Erro ao criar peer:", peerError);
-      console.log("Tentando implementação alternativa");
+      console.error("Erro ao criar peer WebRTC:", peerError);
+      console.log("Tentando implementação Socket.IO Stream como fallback");
 
-      // Implementação direta usando a API WebRTC nativa
-      const pc = new RTCPeerConnection(config);
+      // Usar implementação Socket.IO Stream como fallback
+      peerConfig.socket = socket;
+      peerConfig.salaId = salaId;
+      peerConfig.destinatarioId = null; // Será definido automaticamente para o professor
 
-      // Adicionar stream local se disponível
-      if (stream) {
-        console.log("Adicionando stream local...");
-        stream.getTracks().forEach((track) => {
-          pc.addTrack(track, stream);
-        });
-      }
-
-      // Criar um objeto que simula a interface do simple-peer
-      const simplePeerEmulation = {
-        _pc: pc,
-        connected: false,
-        destroyed: false,
-        _events: {},
-
-        on(event, listener) {
-          if (!this._events[event]) this._events[event] = [];
-          this._events[event].push(listener);
-          return this;
-        },
-
-        emit(event, ...args) {
-          if (!this._events[event]) return false;
-          this._events[event].forEach((listener) => listener(...args));
-          return true;
-        },
-
-        signal(data) {
-          console.log("Processando sinal:", data.type || "candidato");
-
-          if (data.type === "offer") {
-            pc.setRemoteDescription(new RTCSessionDescription(data.sdp))
-              .then(() => pc.createAnswer())
-              .then((answer) => pc.setLocalDescription(answer))
-              .then(() => {
-                this.emit("signal", {
-                  type: "answer",
-                  sdp: pc.localDescription,
-                });
-              })
-              .catch((err) => this.emit("error", err));
-          } else if (data.type === "answer") {
-            pc.setRemoteDescription(new RTCSessionDescription(data.sdp)).catch(
-              (err) => this.emit("error", err)
-            );
-          } else if (data.candidate) {
-            pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(
-              (err) => this.emit("error", err)
-            );
-          }
-        },
-
-        send(data) {
-          // Implementar envio de dados se necessário
-          console.log("Tentando enviar dados:", data);
-        },
-
-        destroy() {
-          if (this.destroyed) return;
-          this.destroyed = true;
-
-          try {
-            pc.close();
-          } catch (err) {
-            console.error("Erro ao fechar conexão:", err);
-          }
-
-          this.emit("close");
-        },
-      };
-
-      // Configurar eventos do RTCPeerConnection
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          simplePeerEmulation.emit("signal", {
-            type: "candidate",
-            candidate: event.candidate,
-          });
-        }
-      };
-
-      pc.oniceconnectionstatechange = () => {
-        console.log("Estado da conexão ICE:", pc.iceConnectionState);
-        if (
-          pc.iceConnectionState === "connected" ||
-          pc.iceConnectionState === "completed"
-        ) {
-          if (!simplePeerEmulation.connected) {
-            simplePeerEmulation.connected = true;
-            simplePeerEmulation.emit("connect");
-          }
-        } else if (
-          pc.iceConnectionState === "failed" ||
-          pc.iceConnectionState === "closed"
-        ) {
-          simplePeerEmulation.emit(
-            "error",
-            new Error("Conexão ICE falhou ou foi fechada")
-          );
-        }
-      };
-
-      pc.ontrack = (event) => {
-        console.log("Stream remoto recebido");
-        simplePeerEmulation.emit("stream", event.streams[0]);
-      };
-
-      // Se for o iniciador, criar oferta
-      if (isInitiator) {
-        console.log("Criando oferta como iniciador...");
-        pc.createOffer()
-          .then((offer) => pc.setLocalDescription(offer))
-          .then(() => {
-            simplePeerEmulation.emit("signal", {
-              type: "offer",
-              sdp: pc.localDescription,
-            });
-          })
-          .catch((err) => simplePeerEmulation.emit("error", err));
-      }
-
-      console.log("Peer criado com sucesso usando API WebRTC nativa");
-      return simplePeerEmulation;
+      const peer = createSocketStreamPeer(peerConfig);
+      console.log("Peer Socket.IO Stream criado com sucesso como fallback");
+      return peer;
     }
   } catch (error) {
     console.error("Erro ao criar peer:", error);
