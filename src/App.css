@@ -1,0 +1,132 @@
+.app-container {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.sala-container {
+  width: 100%;
+  max-width: 1200px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sala-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.sala-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.sala-id {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.sala-nome {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.tela-compartilhada {
+  position: relative;
+  width: 100%;
+  height: 70vh;
+  background-color: #ddd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-container {
+  width: 100%;
+  height: 100%;
+}
+
+.video-container video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.canvas-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.canvas-overlay.ativo {
+  pointer-events: all;
+}
+
+.ferramentas {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.ferramenta {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #4a90e2;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.ferramenta:hover {
+  background-color: #357abd;
+}
+
+.ferramenta.ativo {
+  background-color: #2c3e50;
+}
+
+.cor-picker {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.espessura-slider {
+  width: 100px;
+}
+
+.botao-voltar {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  background-color: #e74c3c;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.botao-voltar:hover {
+  background-color: #c0392b;
+}

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32px" height="32px" viewBox="0 0 32 32" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Vite Logo</title>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="vite-logo">
+            <path d="M29.8836,6.146 L16.7418,29.6987 C16.3697,30.3845 15.3241,30.3845 14.9519,29.6987 L1.8102,6.146 C1.4089,5.4133 1.9445,4.4871 2.7697,4.5296 L15.8458,5.4759 L28.9219,4.5296 C29.7471,4.4871 30.2827,5.4133 29.8836,6.146 Z" id="Path" fill="#41B883"></path>
+            <path d="M24.3249,2.8072 L15.8458,5.4759 L7.3666,2.8072 C6.6437,2.5755 6.0792,3.3993 6.4488,4.0519 L15.8458,22.0946 L25.2427,4.0519 C25.6123,3.3993 25.0478,2.5755 24.3249,2.8072 Z" id="Path" fill="#34495E"></path>
+        </g>
+    </g>
+</svg>
