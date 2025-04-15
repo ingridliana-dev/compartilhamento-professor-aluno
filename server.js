@@ -58,6 +58,19 @@ app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
+// Rota raiz para healthcheck
+app.get("/", (req, res) => {
+  // Se for uma solicitação de API, retornar JSON
+  if (req.headers.accept && req.headers.accept.includes("application/json")) {
+    return res
+      .status(200)
+      .json({ status: "ok", timestamp: new Date().toISOString() });
+  }
+
+  // Se for uma solicitação normal, servir o index.html
+  res.sendFile(join(__dirname, "dist", "index.html"));
+});
+
 // Rota para verificar informações do servidor
 app.get("/api/info", (req, res) => {
   res.status(200).json({
@@ -296,11 +309,29 @@ io.on("connection", (socket) => {
   });
 });
 
+// Definir porta e host
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
-  console.log(`Ambiente: ${isProduction ? "Produção" : "Desenvolvimento"}`);
-  console.log(
-    `Usando ${server instanceof createHttpsServer ? "HTTPS" : "HTTP"}`
-  );
+const HOST = process.env.HOST || "0.0.0.0";
+
+// Adicionar tratamento de erros para o servidor
+server.on("error", (error) => {
+  console.error("Erro no servidor:", error);
 });
+
+// Iniciar o servidor
+try {
+  server.listen(PORT, HOST, () => {
+    console.log(`Servidor rodando em ${HOST}:${PORT}`);
+    console.log(`Ambiente: ${isProduction ? "Produção" : "Desenvolvimento"}`);
+    console.log(
+      `Usando ${server instanceof createHttpsServer ? "HTTPS" : "HTTP"}`
+    );
+    console.log(
+      `Variáveis de ambiente: PORT=${process.env.PORT}, NODE_ENV=${process.env.NODE_ENV}`
+    );
+    console.log(`Diretório atual: ${process.cwd()}`);
+    console.log(`Rotas disponíveis: /health, /api/info`);
+  });
+} catch (error) {
+  console.error("Erro ao iniciar o servidor:", error);
+}
