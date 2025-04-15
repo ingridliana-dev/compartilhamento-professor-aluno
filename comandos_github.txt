@@ -1,0 +1,9 @@
+# Conectar seu repositório local ao GitHub
+# Substitua "seu-usuario" pelo seu nome de usuário do GitHub
+
+git remote add origin https://github.com/seu-usuario/compartilhamento-professor-aluno.git
+git branch -M main
+git push -u origin main
+
+# Após executar esses comandos, seu código estará disponível no GitHub
+# Você pode acessá-lo em: https://github.com/seu-usuario/compartilhamento-professor-aluno
