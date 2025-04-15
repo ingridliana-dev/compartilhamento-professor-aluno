@@ -58,12 +58,12 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
                 return [...prev, aluno];
               });
 
-              // Inicializar a conexão WebRTC para este aluno, mesmo que não esteja selecionado
-              // Isso permite que o professor receba sinais do aluno antes de selecioná-lo
+              // Apenas adicionar o aluno à lista, sem inicializar a conexão WebRTC
+              // A conexão WebRTC será inicializada apenas quando o professor selecionar o aluno
               console.log(
-                `Inicializando conexão WebRTC para o aluno ${aluno.nome} (${aluno.id})`
+                `Aluno adicionado à lista: ${aluno.nome} (${aluno.id})`
               );
-              inicializarConexaoAluno(aluno.id);
+              // Não inicializar automaticamente: inicializarConexaoAluno(aluno.id);
             } else if (evento === "desconectado") {
               console.log(`Aluno desconectado: ${aluno.nome} (${aluno.id})`);
               setAlunosConectados((prev) =>
@@ -348,6 +348,146 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
   const peerConexoes = useRef({});
   const receptoresSinais = useRef({});
 
+  // Função para inicializar a conexão WebRTC com um aluno
+  const inicializarConexaoAluno = (alunoId) => {
+    console.log("Inicializando peer WebRTC para receber stream do aluno");
+
+    // Configurar opções mais robustas para o peer
+    const peer = comunicacao.inicializarPeer(
+      false,
+      null,
+      {
+        // Adicionar mais servidores STUN/TURN para melhorar a conexão
+        iceServers: [
+          { urls: "stun:stun.l.google.com:19302" },
+          { urls: "stun:stun1.l.google.com:19302" },
+          { urls: "stun:stun2.l.google.com:19302" },
+          { urls: "stun:stun3.l.google.com:19302" },
+          { urls: "stun:stun4.l.google.com:19302" },
+          { urls: "stun:stun.ekiga.net" },
+          { urls: "stun:stun.ideasip.com" },
+          { urls: "stun:stun.schlund.de" },
+          { urls: "stun:stun.stunprotocol.org:3478" },
+          { urls: "stun:stun.voiparound.com" },
+          { urls: "stun:stun.voipbuster.com" },
+          { urls: "stun:stun.voipstunt.com" },
+          { urls: "stun:stun.voxgratia.org" },
+        ],
+        sdpSemantics: "unified-plan",
+      },
+      salaId
+    );
+
+    // Configurar eventos do peer com mais logs
+    peer.on("signal", (sinal) => {
+      console.log(
+        "Sinal gerado, enviando para o aluno...",
+        sinal.type || "candidato"
+      );
+      // Enviar sinal para o aluno via servidor
+      comunicacao.enviarSinal(salaId, alunoId, sinal);
+    });
+
+    peer.on("stream", (stream) => {
+      console.log("Stream recebido do aluno!");
+      // Exibir o stream do aluno no vídeo
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    });
+
+    peer.on("connect", () => {
+      console.log("Conexão WebRTC estabelecida com o aluno!");
+
+      // Enviar um ping para manter a conexão ativa
+      const pingInterval = setInterval(() => {
+        if (peer.connected) {
+          try {
+            peer.send(JSON.stringify({ type: "ping", timestamp: Date.now() }));
+            console.log("Ping enviado para manter conexão com aluno");
+          } catch (err) {
+            console.error("Erro ao enviar ping para aluno:", err);
+          }
+        } else {
+          clearInterval(pingInterval);
+        }
+      }, 5000); // Enviar ping a cada 5 segundos
+
+      // Limpar o intervalo quando o peer for destruído
+      peer.on("close", () => clearInterval(pingInterval));
+    });
+
+    // Adicionar evento para dados recebidos
+    peer.on("data", (data) => {
+      try {
+        const message = JSON.parse(data);
+        console.log("Mensagem recebida do aluno:", message);
+
+        // Responder a pings do aluno
+        if (message.type === "ping") {
+          peer.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
+        }
+      } catch (err) {
+        console.log("Dados recebidos (não JSON):", data.toString());
+      }
+    });
+
+    peer.on("error", (err) => {
+      console.error("Erro na conexão WebRTC:", err);
+    });
+
+    peer.on("close", () => {
+      console.log("Conexão WebRTC fechada");
+      // Limpar recursos se o peer for fechado
+      if (peerConexoes.current[alunoId] === peer) {
+        delete peerConexoes.current[alunoId];
+
+        if (receptoresSinais.current[alunoId]) {
+          receptoresSinais.current[alunoId]();
+          delete receptoresSinais.current[alunoId];
+        }
+      }
+    });
+
+    // Armazenar a conexão
+    peerConexoes.current[alunoId] = peer;
+
+    // Configurar receptor de sinais para este aluno
+    console.log("Configurando receptor de sinais para o aluno");
+    const limparReceptor = comunicacao.configurarReceptorSinais(
+      (remetenteId, sinal) => {
+        console.log(`Recebendo sinal de ${remetenteId}`);
+
+        // Processar sinais de qualquer aluno da sala, não apenas do selecionado
+        // Isso é importante para estabelecer a conexão inicial
+        if (peerConexoes.current[remetenteId]) {
+          try {
+            console.log(`Processando sinal do aluno ${remetenteId}`);
+            peerConexoes.current[remetenteId].signal(sinal);
+          } catch (err) {
+            console.error("Erro ao processar sinal:", err);
+          }
+        } else if (remetenteId === alunoId && peerConexoes.current[alunoId]) {
+          try {
+            console.log("Processando sinal do aluno selecionado");
+            peerConexoes.current[alunoId].signal(sinal);
+          } catch (err) {
+            console.error("Erro ao processar sinal:", err);
+          }
+        } else {
+          console.log(
+            `Sinal recebido de ${remetenteId}, mas não há conexão estabelecida`
+          );
+        }
+      }
+    );
+
+    // Armazenar o limpador do receptor
+    receptoresSinais.current[alunoId] = limparReceptor;
+
+    return peer;
+  };
+
   const selecionarAluno = (alunoId) => {
     console.log(`Selecionando aluno: ${alunoId}`);
     const aluno = alunosConectados.find((a) => a.id === alunoId);
@@ -383,144 +523,10 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
     setAlunoSelecionado(aluno);
     console.log(`Aluno selecionado: ${aluno.nome}`);
 
-    // Configurar receptor de sinais WebRTC se ainda não existir
+    // Inicializar a conexão WebRTC com o aluno selecionado
     if (!peerConexoes.current[alunoId]) {
-      console.log("Inicializando peer WebRTC para receber stream do aluno");
-
-      // Configurar opções mais robustas para o peer
-      const peer = comunicacao.inicializarPeer(
-        false,
-        null,
-        {
-          // Adicionar mais servidores STUN/TURN para melhorar a conexão
-          iceServers: [
-            { urls: "stun:stun.l.google.com:19302" },
-            { urls: "stun:stun1.l.google.com:19302" },
-            { urls: "stun:stun2.l.google.com:19302" },
-            { urls: "stun:stun3.l.google.com:19302" },
-            { urls: "stun:stun4.l.google.com:19302" },
-            { urls: "stun:stun.ekiga.net" },
-            { urls: "stun:stun.ideasip.com" },
-            { urls: "stun:stun.schlund.de" },
-            { urls: "stun:stun.stunprotocol.org:3478" },
-            { urls: "stun:stun.voiparound.com" },
-            { urls: "stun:stun.voipbuster.com" },
-            { urls: "stun:stun.voipstunt.com" },
-            { urls: "stun:stun.voxgratia.org" },
-          ],
-          sdpSemantics: "unified-plan",
-        },
-        salaId
-      );
-
-      // Configurar eventos do peer com mais logs
-      peer.on("signal", (sinal) => {
-        console.log(
-          "Sinal gerado, enviando para o aluno...",
-          sinal.type || "candidato"
-        );
-        // Enviar sinal para o aluno via servidor
-        comunicacao.enviarSinal(salaId, alunoId, sinal);
-      });
-
-      peer.on("stream", (stream) => {
-        console.log("Stream recebido do aluno!");
-        // Exibir o stream do aluno no vídeo
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      });
-
-      peer.on("connect", () => {
-        console.log("Conexão WebRTC estabelecida com o aluno!");
-
-        // Enviar um ping para manter a conexão ativa
-        const pingInterval = setInterval(() => {
-          if (peer.connected) {
-            try {
-              peer.send(
-                JSON.stringify({ type: "ping", timestamp: Date.now() })
-              );
-              console.log("Ping enviado para manter conexão com aluno");
-            } catch (err) {
-              console.error("Erro ao enviar ping para aluno:", err);
-            }
-          } else {
-            clearInterval(pingInterval);
-          }
-        }, 5000); // Enviar ping a cada 5 segundos
-
-        // Limpar o intervalo quando o peer for destruído
-        peer.on("close", () => clearInterval(pingInterval));
-      });
-
-      // Adicionar evento para dados recebidos
-      peer.on("data", (data) => {
-        try {
-          const message = JSON.parse(data);
-          console.log("Mensagem recebida do aluno:", message);
-
-          // Responder a pings do aluno
-          if (message.type === "ping") {
-            peer.send(JSON.stringify({ type: "pong", timestamp: Date.now() }));
-          }
-        } catch (err) {
-          console.log("Dados recebidos (não JSON):", data.toString());
-        }
-      });
-
-      peer.on("error", (err) => {
-        console.error("Erro na conexão WebRTC:", err);
-      });
-
-      peer.on("close", () => {
-        console.log("Conexão WebRTC fechada");
-        // Limpar recursos se o peer for fechado
-        if (peerConexoes.current[alunoId] === peer) {
-          delete peerConexoes.current[alunoId];
-
-          if (receptoresSinais.current[alunoId]) {
-            receptoresSinais.current[alunoId]();
-            delete receptoresSinais.current[alunoId];
-          }
-        }
-      });
-
-      // Armazenar a conexão
-      peerConexoes.current[alunoId] = peer;
-
-      // Configurar receptor de sinais para este aluno
-      console.log("Configurando receptor de sinais para o aluno");
-      const limparReceptor = comunicacao.configurarReceptorSinais(
-        (remetenteId, sinal) => {
-          console.log(`Recebendo sinal de ${remetenteId}`);
-
-          // Processar sinais de qualquer aluno da sala, não apenas do selecionado
-          // Isso é importante para estabelecer a conexão inicial
-          if (peerConexoes.current[remetenteId]) {
-            try {
-              console.log(`Processando sinal do aluno ${remetenteId}`);
-              peerConexoes.current[remetenteId].signal(sinal);
-            } catch (err) {
-              console.error("Erro ao processar sinal:", err);
-            }
-          } else if (remetenteId === alunoId && peerConexoes.current[alunoId]) {
-            try {
-              console.log("Processando sinal do aluno selecionado");
-              peerConexoes.current[alunoId].signal(sinal);
-            } catch (err) {
-              console.error("Erro ao processar sinal:", err);
-            }
-          } else {
-            console.log(
-              `Sinal recebido de ${remetenteId}, mas não há conexão estabelecida`
-            );
-          }
-        }
-      );
-
-      // Armazenar o limpador do receptor
-      receptoresSinais.current[alunoId] = limparReceptor;
+      // Usar a função inicializarConexaoAluno para criar o peer
+      inicializarConexaoAluno(alunoId);
     }
   };
 

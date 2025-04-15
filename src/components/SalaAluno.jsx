@@ -97,6 +97,14 @@ const SalaAluno = ({ nome, salaId, voltarParaInicio }) => {
         const limparReceptorDesenhos = comunicacao.configurarReceptorDesenhos(
           (desenhoData) => {
             console.log("Recebendo desenho do professor:", desenhoData);
+
+            // Mostrar mensagem informando que o professor está desenhando
+            if (!compartilhando) {
+              setMensagem(
+                "O professor está desenhando na sua tela. Compartilhe sua tela para ver o vídeo."
+              );
+            }
+
             if (contextRef.current) {
               const ctx = contextRef.current;
 
