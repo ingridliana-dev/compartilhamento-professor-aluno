@@ -53,13 +53,15 @@ app.options("*", cors());
 // Servir arquivos estáticos em produção
 app.use(express.static(join(__dirname, "dist")));
 
+// Definir rotas simples para evitar problemas com path-to-regexp
+
 // Rota de healthcheck para o Railway
-app.get("/health", (req, res) => {
+app.get("/health", function (req, res) {
   res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 // Rota raiz para healthcheck
-app.get("/", (req, res) => {
+app.get("/", function (req, res) {
   // Se for uma solicitação de API, retornar JSON
   if (req.headers.accept && req.headers.accept.includes("application/json")) {
     return res
@@ -72,7 +74,7 @@ app.get("/", (req, res) => {
 });
 
 // Rota para verificar informações do servidor
-app.get("/api/info", (req, res) => {
+app.get("/api/info", function (req, res) {
   res.status(200).json({
     status: "ok",
     environment: isProduction ? "production" : "development",
@@ -81,6 +83,12 @@ app.get("/api/info", (req, res) => {
     timestamp: new Date().toISOString(),
     salas: Object.keys(salas).length,
   });
+});
+
+// Rota de fallback para servir o index.html para todas as rotas não encontradas
+// Isso é importante para o React Router funcionar
+app.get("*", function (req, res) {
+  res.sendFile(join(__dirname, "dist", "index.html"));
 });
 
 // Criar servidor HTTP ou HTTPS dependendo do ambiente
