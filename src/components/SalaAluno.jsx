@@ -691,13 +691,23 @@ const SalaAluno = ({ nome, salaId, voltarParaInicio }) => {
             "Timeout de conexão - não foi possível conectar ao professor"
           );
           setMensagem(
-            "Tempo esgotado. Não foi possível conectar ao professor. Tente novamente."
+            "Aguardando professor aceitar a conexão... Se demorar muito, tente novamente."
           );
-          clearInterval(monitorConexaoRef.current);
-          monitorConexaoRef.current = null;
-          pararCompartilhamento();
+
+          // Definir um segundo timeout mais longo antes de desistir completamente
+          setTimeout(() => {
+            if (peerRef.current && !peerRef.current.connected) {
+              console.log("Segundo timeout de conexão - desistindo");
+              setMensagem(
+                "Tempo esgotado. Não foi possível conectar ao professor. Tente novamente."
+              );
+              clearInterval(monitorConexaoRef.current);
+              monitorConexaoRef.current = null;
+              pararCompartilhamento();
+            }
+          }, 30000); // Mais 30 segundos (total de 45 segundos)
         }
-      }, 15000); // 15 segundos de timeout
+      }, 15000); // 15 segundos para o primeiro timeout
 
       // Limpar os intervalos quando o componente for desmontado ou o compartilhamento parar
       return () => {

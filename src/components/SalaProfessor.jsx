@@ -57,6 +57,13 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
                 }
                 return [...prev, aluno];
               });
+
+              // Inicializar a conexão WebRTC para este aluno, mesmo que não esteja selecionado
+              // Isso permite que o professor receba sinais do aluno antes de selecioná-lo
+              console.log(
+                `Inicializando conexão WebRTC para o aluno ${aluno.nome} (${aluno.id})`
+              );
+              inicializarConexaoAluno(aluno.id);
             } else if (evento === "desconectado") {
               console.log(`Aluno desconectado: ${aluno.nome} (${aluno.id})`);
               setAlunosConectados((prev) =>
@@ -487,13 +494,27 @@ const SalaProfessor = ({ nome, salaId, voltarParaInicio, atualizarSalaId }) => {
       const limparReceptor = comunicacao.configurarReceptorSinais(
         (remetenteId, sinal) => {
           console.log(`Recebendo sinal de ${remetenteId}`);
-          if (remetenteId === alunoId && peerConexoes.current[alunoId]) {
+
+          // Processar sinais de qualquer aluno da sala, não apenas do selecionado
+          // Isso é importante para estabelecer a conexão inicial
+          if (peerConexoes.current[remetenteId]) {
             try {
-              console.log("Processando sinal do aluno");
+              console.log(`Processando sinal do aluno ${remetenteId}`);
+              peerConexoes.current[remetenteId].signal(sinal);
+            } catch (err) {
+              console.error("Erro ao processar sinal:", err);
+            }
+          } else if (remetenteId === alunoId && peerConexoes.current[alunoId]) {
+            try {
+              console.log("Processando sinal do aluno selecionado");
               peerConexoes.current[alunoId].signal(sinal);
             } catch (err) {
               console.error("Erro ao processar sinal:", err);
             }
+          } else {
+            console.log(
+              `Sinal recebido de ${remetenteId}, mas não há conexão estabelecida`
+            );
           }
         }
       );
